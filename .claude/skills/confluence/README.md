@@ -187,6 +187,48 @@ Customer REST API Documentation
 - **templates.py** - Page formatting
 - **config.json** - Your credentials (you create this)
 
+## Manual CLI Commands
+
+If you need to interact with Jira or Confluence directly without using the `/confluence` skill:
+
+### Jira Commands
+
+**Get ticket details:**
+```bash
+python .claude/skills/confluence/confluence_api.py get-jira-issue --issue-key PROJ-123
+```
+
+**Add comment to ticket:**
+```bash
+python .claude/skills/confluence/confluence_api.py add-jira-comment \
+  --issue-key PROJ-123 \
+  --comment "Updated documentation - see Confluence page"
+```
+
+**Test Jira connection:**
+```bash
+python .claude/skills/confluence/confluence_api.py test-jira-connection
+```
+
+### Confluence Commands
+
+**Search for a page:**
+```bash
+python .claude/skills/confluence/confluence_api.py search-page \
+  --title "My Page Title" \
+  --space Work
+```
+
+**Update existing page:**
+```bash
+python .claude/skills/confluence/confluence_api.py update-page \
+  --page-id 123456 \
+  --title "Updated Title" \
+  --content-file my_content.html
+```
+
+**Note:** The `/confluence` skill handles most of this automatically, but these commands are useful for scripting or manual operations.
+
 ## Team Sharing
 
 Commit to git:
