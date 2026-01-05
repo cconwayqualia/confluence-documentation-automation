@@ -43,6 +43,8 @@ class ConfluenceAPI:
         self.email = config.get('email', '')
         self.api_token = config.get('api_token', '')
         self.space_key = config.get('space_key', '')
+        self.jira_url = config.get('jira_url', '').rstrip('/')
+        self.jira_project_key = config.get('jira_project_key', '')
 
         # Validate required fields
         missing = []
@@ -463,6 +465,180 @@ class ConfluenceAPI:
             print(f"Error searching for page: {str(e)}", file=sys.stderr)
             return None
 
+    def test_jira_connection(self) -> bool:
+        """Test Jira API connectivity and authentication"""
+        if not self.jira_url:
+            print("Error: jira_url not configured in config.json", file=sys.stderr)
+            return False
+
+        try:
+            response = requests.get(
+                f"{self.jira_url}/rest/api/3/myself",
+                headers=self.headers,
+                timeout=10
+            )
+
+            if response.status_code == 200:
+                user_data = response.json()
+                print("Jira connection successful")
+                print(f"Connected to: {self.jira_url}")
+                print(f"Authenticated as: {user_data.get('displayName', self.email)}")
+                return True
+            elif response.status_code == 401:
+                print("Error: Jira authentication failed", file=sys.stderr)
+                print("Check your API token", file=sys.stderr)
+                return False
+            elif response.status_code == 403:
+                print("Error: Permission denied", file=sys.stderr)
+                return False
+            elif response.status_code == 404:
+                print("Error: Jira instance not found", file=sys.stderr)
+                print(f"Check jira_url: {self.jira_url}", file=sys.stderr)
+                return False
+            else:
+                print(f"Error: Unexpected status code {response.status_code}", file=sys.stderr)
+                print(response.text, file=sys.stderr)
+                return False
+
+        except requests.exceptions.Timeout:
+            print("Error: Connection timed out", file=sys.stderr)
+            return False
+        except requests.exceptions.ConnectionError:
+            print("Error: Cannot connect to Jira", file=sys.stderr)
+            print(f"Check jira_url: {self.jira_url}", file=sys.stderr)
+            return False
+        except Exception as e:
+            print(f"Error: {str(e)}", file=sys.stderr)
+            return False
+
+    def get_jira_issue(self, issue_key: str) -> Optional[Dict[str, Any]]:
+        """
+        Get Jira issue details
+
+        Args:
+            issue_key: Jira issue key (e.g., PROJ-123)
+
+        Returns:
+            Dict with issue data, or None if failed
+        """
+        if not self.jira_url:
+            print("Error: jira_url not configured in config.json", file=sys.stderr)
+            return None
+
+        try:
+            response = requests.get(
+                f"{self.jira_url}/rest/api/3/issue/{issue_key}",
+                headers=self.headers,
+                params={'fields': 'summary,status,assignee,description,issuetype,priority,created,updated'},
+                timeout=10
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                fields = data.get('fields', {})
+
+                # Extract key information
+                issue_info = {
+                    'key': data.get('key'),
+                    'summary': fields.get('summary', 'N/A'),
+                    'status': fields.get('status', {}).get('name', 'N/A'),
+                    'issue_type': fields.get('issuetype', {}).get('name', 'N/A'),
+                    'priority': fields.get('priority', {}).get('name', 'N/A'),
+                    'assignee': fields.get('assignee', {}).get('displayName', 'Unassigned'),
+                    'description': fields.get('description', ''),
+                    'created': fields.get('created', ''),
+                    'updated': fields.get('updated', ''),
+                    'url': f"{self.jira_url}/browse/{issue_key}"
+                }
+
+                print(f"Jira issue {issue_key} found")
+                print(f"Summary: {issue_info['summary']}")
+                print(f"Status: {issue_info['status']}")
+                print(f"URL: {issue_info['url']}")
+
+                return issue_info
+
+            elif response.status_code == 404:
+                print(f"Error: Jira issue '{issue_key}' not found", file=sys.stderr)
+                return None
+            elif response.status_code == 401:
+                print("Error: Authentication failed", file=sys.stderr)
+                return None
+            elif response.status_code == 403:
+                print(f"Error: No permission to access issue '{issue_key}'", file=sys.stderr)
+                return None
+            else:
+                print(f"Error: Failed to get issue (status {response.status_code})", file=sys.stderr)
+                print(response.text, file=sys.stderr)
+                return None
+
+        except Exception as e:
+            print(f"Error getting Jira issue: {str(e)}", file=sys.stderr)
+            return None
+
+    def add_jira_comment(self, issue_key: str, comment: str) -> bool:
+        """
+        Add a comment to a Jira issue
+
+        Args:
+            issue_key: Jira issue key (e.g., PROJ-123)
+            comment: Comment text (supports Atlassian Document Format)
+
+        Returns:
+            True if successful, False otherwise
+        """
+        if not self.jira_url:
+            print("Error: jira_url not configured in config.json", file=sys.stderr)
+            return False
+
+        # Format comment in Atlassian Document Format (ADF)
+        payload = {
+            'body': {
+                'type': 'doc',
+                'version': 1,
+                'content': [
+                    {
+                        'type': 'paragraph',
+                        'content': [
+                            {
+                                'type': 'text',
+                                'text': comment
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+
+        try:
+            response = requests.post(
+                f"{self.jira_url}/rest/api/3/issue/{issue_key}/comment",
+                headers=self.headers,
+                json=payload,
+                timeout=30
+            )
+
+            if response.status_code in [200, 201]:
+                print(f"Comment added to {issue_key}")
+                return True
+            elif response.status_code == 404:
+                print(f"Error: Jira issue '{issue_key}' not found", file=sys.stderr)
+                return False
+            elif response.status_code == 401:
+                print("Error: Authentication failed", file=sys.stderr)
+                return False
+            elif response.status_code == 403:
+                print(f"Error: No permission to comment on issue '{issue_key}'", file=sys.stderr)
+                return False
+            else:
+                print(f"Error: Failed to add comment (status {response.status_code})", file=sys.stderr)
+                print(response.text, file=sys.stderr)
+                return False
+
+        except Exception as e:
+            print(f"Error adding Jira comment: {str(e)}", file=sys.stderr)
+            return False
+
 
 def main():
     """CLI entry point"""
@@ -507,6 +683,18 @@ def main():
     search_parser = subparsers.add_parser('search-page', help='Search for a page by title')
     search_parser.add_argument('--title', required=True, help='Page title to search for')
     search_parser.add_argument('--space', required=True, help='Space key')
+
+    # test-jira-connection command
+    subparsers.add_parser('test-jira-connection', help='Test Jira API connectivity')
+
+    # get-jira-issue command
+    get_issue_parser = subparsers.add_parser('get-jira-issue', help='Get Jira issue details')
+    get_issue_parser.add_argument('--issue-key', required=True, help='Jira issue key (e.g., PROJ-123)')
+
+    # add-jira-comment command
+    add_comment_parser = subparsers.add_parser('add-jira-comment', help='Add a comment to a Jira issue')
+    add_comment_parser.add_argument('--issue-key', required=True, help='Jira issue key (e.g., PROJ-123)')
+    add_comment_parser.add_argument('--comment', required=True, help='Comment text')
 
     args = parser.parse_args()
 
@@ -591,6 +779,22 @@ def main():
             sys.exit(0)
         else:
             sys.exit(1)
+
+    elif args.command == 'test-jira-connection':
+        success = api.test_jira_connection()
+        sys.exit(0 if success else 1)
+
+    elif args.command == 'get-jira-issue':
+        result = api.get_jira_issue(args.issue_key)
+        if result:
+            print(json.dumps(result, indent=2))
+            sys.exit(0)
+        else:
+            sys.exit(1)
+
+    elif args.command == 'add-jira-comment':
+        success = api.add_jira_comment(args.issue_key, args.comment)
+        sys.exit(0 if success else 1)
 
     else:
         print(f"Unknown command: {args.command}", file=sys.stderr)

@@ -499,3 +499,195 @@ def key_files_template(files: List[Dict[str, Any]]) -> str:
 def generate_timestamp() -> str:
     """Generate a formatted timestamp for auto-generated content"""
     return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+
+def jira_ticket_panel(
+    issue_key: str,
+    summary: str,
+    status: str,
+    issue_type: str,
+    priority: str,
+    assignee: str,
+    jira_url: str
+) -> str:
+    """
+    Generate a Jira ticket information panel
+
+    Args:
+        issue_key: Jira issue key (e.g., PROJ-123)
+        summary: Issue summary/title
+        status: Issue status
+        issue_type: Type of issue (Bug, Story, Task, etc.)
+        priority: Issue priority
+        assignee: Assignee name
+        jira_url: Full URL to the Jira issue
+
+    Returns:
+        Confluence Storage Format panel with ticket info
+    """
+    ticket_info = f'''<table>
+  <tbody>
+    <tr>
+      <th>Ticket</th>
+      <td><a href="{jira_url}">{escape_html(issue_key)}</a></td>
+    </tr>
+    <tr>
+      <th>Summary</th>
+      <td>{escape_html(summary)}</td>
+    </tr>
+    <tr>
+      <th>Type</th>
+      <td>{escape_html(issue_type)}</td>
+    </tr>
+    <tr>
+      <th>Status</th>
+      <td><strong>{escape_html(status)}</strong></td>
+    </tr>
+    <tr>
+      <th>Priority</th>
+      <td>{escape_html(priority)}</td>
+    </tr>
+    <tr>
+      <th>Assignee</th>
+      <td>{escape_html(assignee)}</td>
+    </tr>
+  </tbody>
+</table>'''
+
+    return info_panel(ticket_info, 'info')
+
+
+def work_session_template(
+    task_name: str,
+    overview: str,
+    actions_done: List[str],
+    files_involved: List[Dict[str, str]],
+    code_snippets: List[Dict[str, str]],
+    commands_run: List[str],
+    how_to_recreate: List[str],
+    notes: str = '',
+    errors_encountered: str = '',
+    jira_info: Optional[Dict[str, str]] = None,
+    documented_by: str = 'Claude Code'
+) -> str:
+    """
+    Generate a work session documentation page (for ticket/task mode)
+
+    Args:
+        task_name: Name of the task
+        overview: Brief summary of what this work session was about
+        actions_done: List of actions performed
+        files_involved: List of dicts with 'path' and 'description' keys
+        code_snippets: List of dicts with 'code', 'language', and optional 'title' keys
+        commands_run: List of bash commands executed
+        how_to_recreate: Step-by-step recreation instructions
+        notes: Additional notes or context
+        errors_encountered: Description of errors and how they were solved
+        jira_info: Optional dict with Jira ticket information (issue_key, summary, status, etc.)
+        documented_by: Who documented this (default: Claude Code)
+
+    Returns:
+        Complete HTML page content for work session documentation
+    """
+    timestamp = generate_timestamp()
+
+    # Jira ticket panel (if provided)
+    jira_html = ''
+    if jira_info:
+        jira_html = f'''<h2>Jira Ticket</h2>
+{jira_ticket_panel(
+    jira_info.get('key', ''),
+    jira_info.get('summary', ''),
+    jira_info.get('status', ''),
+    jira_info.get('issue_type', ''),
+    jira_info.get('priority', ''),
+    jira_info.get('assignee', ''),
+    jira_info.get('url', '')
+)}
+'''
+
+    # Overview
+    overview_html = f'<p>{escape_html(overview)}</p>'
+
+    # Actions done
+    actions_items = ''.join([f'<li>{escape_html(action)}</li>' for action in actions_done])
+    actions_html = f'<ul>{actions_items}</ul>' if actions_items else '<p><em>No actions documented</em></p>'
+
+    # Files involved
+    files_html = ''
+    if files_involved:
+        file_items = []
+        for file_info in files_involved:
+            path = file_info.get('path', 'Unknown')
+            description = file_info.get('description', 'Modified')
+            file_items.append(f'<li><code>{escape_html(path)}</code> - {escape_html(description)}</li>')
+        files_html = f'<ul>{"".join(file_items)}</ul>'
+    else:
+        files_html = '<p><em>No files documented</em></p>'
+
+    # Code snippets
+    code_html = ''
+    if code_snippets:
+        for snippet in code_snippets:
+            code = snippet.get('code', '')
+            language = snippet.get('language', 'text')
+            title = snippet.get('title', None)
+            if code:
+                code_html += code_block(code, language, title) + '\n'
+    else:
+        code_html = '<p><em>No code snippets</em></p>'
+
+    # Commands run
+    commands_html = ''
+    if commands_run:
+        all_commands = '\n'.join(commands_run)
+        commands_html = code_block(all_commands, 'bash', 'Commands Executed')
+    else:
+        commands_html = '<p><em>No commands documented</em></p>'
+
+    # How to recreate
+    recreate_items = ''.join([f'<li>{escape_html(step)}</li>' for step in how_to_recreate])
+    recreate_html = f'<ol>{recreate_items}</ol>' if recreate_items else '<p><em>No recreation steps provided</em></p>'
+
+    # Errors encountered
+    errors_html = ''
+    if errors_encountered:
+        errors_html = f'''<h2>Errors Encountered</h2>
+{info_panel(escape_html(errors_encountered), 'warning')}
+'''
+
+    # Notes
+    notes_html = ''
+    if notes:
+        notes_html = f'''<h2>Notes</h2>
+<p>{escape_html(notes)}</p>
+'''
+
+    # Footer
+    footer = f'<p><em>Documented by: {escape_html(documented_by)} on {timestamp}</em></p>'
+
+    return f'''{jira_html}
+<h2>Overview</h2>
+{overview_html}
+
+<h2>What Was Done</h2>
+{actions_html}
+
+<h2>Key Files</h2>
+{files_html}
+
+<h2>Code/Scripts</h2>
+{code_html}
+
+<h2>Commands Run</h2>
+{commands_html}
+
+<h2>How to Recreate</h2>
+{recreate_html}
+
+{errors_html}
+
+{notes_html}
+
+{footer}
+'''

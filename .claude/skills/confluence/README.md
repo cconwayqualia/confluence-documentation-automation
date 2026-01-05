@@ -1,21 +1,26 @@
 # Confluence Work Logger
 
-Document your work sessions so others can understand and recreate what you did.
+Document your work sessions and projects so others can understand and recreate what you did.
 
 ## What It Does
 
-When you're working on something (fixing an issue, writing a script, solving a problem), type `/confluence` and it will:
+Type `/confluence` and choose between two modes:
 
-1. Ask what task you're documenting
-2. Review what you did in this session
-3. Create a Confluence page explaining:
-   - What was done
-   - How to recreate it
-   - Code/scripts involved
-   - Commands run
-   - Important notes
+### Mode 1: Ticket/Task Documentation (Work Session)
+For documenting a single work session, bug fix, or feature:
+- Links to Jira tickets automatically
+- Documents what you did THIS session
+- Creates a focused page with code, commands, and reproduction steps
+- Perfect for daily work logs and ticket documentation
 
-Perfect for knowledge sharing and creating "how-to" docs from your actual work.
+### Mode 2: Project Documentation (Comprehensive)
+For documenting an entire project/codebase:
+- Creates multiple organized pages (Overview, Architecture, Setup, etc.)
+- Analyzes project structure and dependencies
+- Generates comprehensive documentation hierarchy
+- Perfect for onboarding and project handoffs
+
+Both modes create searchable Confluence pages your team can reference.
 
 ## Setup (5 minutes)
 
@@ -32,9 +37,13 @@ Perfect for knowledge sharing and creating "how-to" docs from your actual work.
      "confluence_url": "https://your-company.atlassian.net/wiki",
      "email": "your-email@example.com",
      "api_token": "your-token-here",
-     "space_key": "DEV"
+     "space_key": "DEV",
+     "jira_url": "https://your-company.atlassian.net",
+     "jira_project_key": "PROJ"
    }
    ```
+
+   **Note**: `jira_url` and `jira_project_key` are optional. If provided, the skill will automatically link your work sessions to Jira tickets.
 
 4. **Install**:
    ```bash
@@ -43,82 +52,132 @@ Perfect for knowledge sharing and creating "how-to" docs from your actual work.
 
 5. **Test**:
    ```bash
+   # Test Confluence connection
    python .claude/skills/confluence/confluence_api.py test-connection
+
+   # Test Jira connection (optional, if you configured Jira)
+   python .claude/skills/confluence/confluence_api.py test-jira-connection
    ```
 
 ## Usage Examples
 
-### Example 1: Fixing Zscaler Issue
+### Mode 1: Ticket/Task Documentation
 
-You spend an hour fixing Zscaler connectivity. When done, type:
+#### Example 1: Documenting a Jira Ticket
+
+You just fixed a bug (ticket PROJ-123). Type:
 ```
 /confluence
 ```
 
-It asks: "What task are you documenting?"
-You say: "Fixed Zscaler connection dropping on VPN"
+**Dialog:**
+- "What are you documenting?" → Choose **1** (task/ticket)
+- "What task?" → "Fixed authentication timeout issue"
+- "Jira ticket ID?" → "PROJ-123"
 
-It creates a Confluence page titled **"Fixed Zscaler connection dropping on VPN - 2026-01-05"** with:
-- What the problem was
-- What you changed
-- Configuration files modified
-- How others can apply the same fix
+**Result:** Creates **"[PROJ-123] Fixed authentication timeout issue - 2026-01-05"** with:
+- Jira ticket panel (summary, status, priority, link)
+- What was done
+- Files modified with code snippets
+- Commands executed
+- How to recreate
+- Comment added to Jira ticket with doc link
 
-### Example 2: Writing a Script
+#### Example 2: Daily Work Log
 
-You write a Python script to export data. Type:
+You spent time investigating an issue without a ticket. Type:
 ```
 /confluence
 ```
 
-It asks: "What task are you documenting?"
-You say: "Python script for daily data export"
+**Dialog:**
+- "What are you documenting?" → Choose **1** (task/ticket)
+- "What task?" → "Investigated memory leak in worker process"
+- "Jira ticket ID?" → "no"
 
-It creates a page with:
-- What the script does and why
-- How to use it
-- The full code with syntax highlighting
-- Requirements and dependencies
-- Example usage
+**Result:** Creates **"Investigated memory leak in worker process - 2026-01-05"** documenting your findings.
 
-### Example 3: Follow-up Task
+#### Example 3: Follow-up Work
 
-Later you improve that script. Type:
+Later you continue the investigation. Type:
 ```
 /confluence
 ```
 
-It asks: "Is this a follow-up to a previous task?"
-You say: "Yes, parent is 'Python script for daily data export'"
+**Dialog:**
+- "What are you documenting?" → Choose **1** (task/ticket)
+- "What task?" → "Fixed memory leak in worker process"
+- "Jira ticket ID?" → "PROJ-456"
+- "Follow-up to previous task?" → "Yes, parent is 'Investigated memory leak in worker process'"
 
-It creates a child page under the original, building a tree:
+**Result:** Creates a child page under the original investigation.
+
+### Mode 2: Project Documentation
+
+#### Example 4: Documenting a Project
+
+You want to document your entire REST API project. Type:
 ```
-Python script for daily data export
-└── Added error handling and retry logic - 2026-01-06
+/confluence
 ```
+
+**Dialog:**
+- "What are you documenting?" → Choose **2** (entire project)
+- "Project name?" → "Customer REST API"
+- "Project location?" → "/Users/you/projects/customer-api"
+
+**Result:** Creates a parent page **"Customer REST API Documentation"** with 5 child pages:
+- Architecture Overview
+- Dependencies
+- Setup & Installation
+- Project Structure
+- Key Files Reference
+
+Perfect for onboarding new team members!
 
 ## What Gets Documented
 
+### For Work Sessions (Mode 1):
+- **Jira ticket info**: Summary, status, priority, assignee (if provided)
 - **Actions taken**: Files created, edited, commands run
 - **Code written**: Full scripts or important snippets
 - **Problems solved**: Errors encountered and how you fixed them
 - **How to recreate**: Step-by-step instructions
 - **Context**: Why decisions were made, gotchas, tips
 
-## Tree Organization
+### For Projects (Mode 2):
+- **Overview**: Project description, purpose, tech stack
+- **Architecture**: System components, design patterns, data flow
+- **Dependencies**: Production and development dependencies with versions
+- **Setup**: Prerequisites, installation steps, configuration examples
+- **Structure**: Directory tree with descriptions of key directories
+- **Key Files**: Important files with code samples and explanations
 
-Create hierarchies for related tasks:
+## Page Hierarchies
 
+Both modes support hierarchical organization:
+
+### Work Session Hierarchies (Mode 1):
 ```
 Zscaler Issue Resolution
 ├── Initial Investigation - 2026-01-05
 ├── Configuration Fix - 2026-01-05
 └── Testing Results - 2026-01-06
 
-Database Migration
-├── Schema Changes - 2026-01-03
-├── Data Migration Script - 2026-01-04
-└── Rollback Procedure - 2026-01-04
+[PROJ-123] Authentication Refactor
+├── [PROJ-123] Planning and Design - 2026-01-03
+├── [PROJ-123] Implementation - 2026-01-04
+└── [PROJ-123] Testing - 2026-01-05
+```
+
+### Project Documentation Hierarchies (Mode 2):
+```
+Customer REST API Documentation
+├── Architecture Overview
+├── Dependencies
+├── Setup & Installation
+├── Project Structure
+└── Key Files Reference
 ```
 
 ## Files
@@ -142,14 +201,27 @@ Each person creates their own `config.json` with their API token.
 
 ## Tips
 
+### For Work Sessions (Mode 1):
 - Document as you finish tasks, while it's fresh
-- Be specific - others should be able to follow along
-- Include error messages and solutions
-- Explain "why" not just "what"
-- For scripts, show example usage
+- Be specific about what changed in THIS session
+- Include error messages and how you solved them
+- Explain "why" decisions were made, not just "what"
+- Link to Jira tickets for context
+- Use parent pages to group related work
+
+### For Projects (Mode 2):
+- Run this when starting a new project or when documentation is outdated
+- Review generated docs and add diagrams manually if needed
+- Keep architecture docs updated as the project evolves
+- Use this for new team member onboarding
+- Update setup instructions when dependencies change
 
 ## That's It!
 
-Work on something → Type `/confluence` → Documentation created.
+**For daily work:**
+Work on a ticket → Type `/confluence` → Choose Mode 1 → Work session documented with Jira link
 
-Simple, automatic knowledge sharing.
+**For projects:**
+Have a codebase → Type `/confluence` → Choose Mode 2 → Complete project docs created
+
+Simple, automatic knowledge sharing for both individual tasks and entire projects.

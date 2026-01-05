@@ -21,15 +21,21 @@ Open `.claude/skills/confluence/config.json` and fill in:
   "confluence_url": "https://your-company.atlassian.net/wiki",
   "email": "your-email@example.com",
   "api_token": "paste-your-token-here",
-  "space_key": "DEV"
+  "space_key": "DEV",
+  "jira_url": "https://your-company.atlassian.net",
+  "jira_project_key": "PROJ"
 }
 ```
 
 **Where to find these:**
 - **confluence_url**: The URL you use to access Confluence (include `/wiki`)
 - **email**: Your Atlassian/Confluence email
-- **api_token**: The token from step 2
+- **api_token**: The token from step 2 (same token works for both Confluence and Jira)
 - **space_key**: The space where you want docs (look in Confluence URL: `/spaces/DEV/...`)
+- **jira_url**: (Optional) Your Jira URL without `/wiki` suffix
+- **jira_project_key**: (Optional) Default Jira project key (e.g., "PROJ", "DEV")
+
+**Note:** If you don't use Jira, you can omit `jira_url` and `jira_project_key`. The skill will work fine without them.
 
 ## 4. Install Python library
 
@@ -40,14 +46,18 @@ pip install requests
 ## 5. Test it
 
 ```bash
+# Test Confluence connection (required)
 python .claude/skills/confluence/confluence_api.py test-connection
+
+# Test Jira connection (optional, if you configured Jira)
+python .claude/skills/confluence/confluence_api.py test-jira-connection
 ```
 
-Should say "Connection successful".
+Both should say "Connection successful".
 
 ## Done!
 
-Now just type `/confluence` in Claude Code to document any project.
+Now just type `/confluence` in Claude Code to document work sessions or entire projects.
 
 ## Troubleshooting
 
