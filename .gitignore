@@ -1,6 +1,11 @@
 # Confluence skill - don't commit your API token
 .claude/skills/confluence/config.json
 
+# Claude Code local settings and cache
+*.local.json
+.claude/
+__pycache__/
+
 # Project directories to ignore
 admin-audit/
 azure-webapp-restart/
