@@ -1,2 +1,7 @@
 # Confluence skill - don't commit your API token
 .claude/skills/confluence/config.json
+
+# Project directories to ignore
+admin-audit/
+azure-webapp-restart/
+Help Doc Upload/
