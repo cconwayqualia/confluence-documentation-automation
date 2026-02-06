@@ -11,3 +11,9 @@ admin-audit/
 azure-webapp-restart/
 Help Doc Upload/
 Temp
+
+# Rubrik alert aggregator
+Rubrik/
+
+# Zscaler project
+Zscaler/
